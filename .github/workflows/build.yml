@@ -34,18 +34,6 @@ jobs:
           cd bare
           flutter build apk --release --split-per-abi
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$GITHUB_WORKSPACE/Bare_new.apk"
-      - uses: subosito/flutter-action@v2
-        continue-on-error: true
-        with:
-          flutter-version: "3.27.4"
-      - name: build bare old flutter
-        continue-on-error: true
-        run: |
-          cd "$RUNNER_TEMP"
-          flutter create bare_old --platforms=android --org com.agaa
-          cd bare_old
-          flutter build apk --release --split-per-abi
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$GITHUB_WORKSPACE/Bare_old.apk"
       - name: notes
         run: |
           ls -l *.apk | awk '{print $5, $9}' > notes.txt
@@ -59,4 +47,3 @@ jobs:
           files: |
             AgaaChat_arm64.apk
             Bare_new.apk
-            Bare_old.apk
