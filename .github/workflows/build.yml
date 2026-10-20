@@ -1,0 +1,32 @@
+name: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash chat_setup*.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter create . --platforms=android --project-name agaa_chat --org com.agaa
+      - run: bash chat_setup*.sh
+      - run: flutter pub get
+      - name: build
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk AgaaChat.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Agaa Chat v${{ github.run_number }}
+          files: AgaaChat.apk
