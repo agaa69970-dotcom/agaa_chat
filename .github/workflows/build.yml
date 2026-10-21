@@ -27,23 +27,41 @@ jobs:
             printf '\nandroid {\n    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n    }\n}\n' >> "$f"
           fi
       - run: flutter pub get
-      - name: build
+      - name: analyze
+        continue-on-error: true
         run: |
-          flutter build apk --release --split-per-abi
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analyze.txt 2>&1
+          echo "analyze exit=$?" >> analyze.txt
+      - name: build
+        id: build
+        continue-on-error: true
+        run: |
+          flutter build apk --release --split-per-abi > build.txt 2>&1
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk AgaaChat.apk
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk AgaaChat_32bit.apk
-      - name: verify
+      - name: notes
+        if: always()
         run: |
-          unzip -tq AgaaChat.apk
-          unzip -tq AgaaChat_32bit.apk
-          ls -l *.apk | awk '{print $5, $9}' > notes.txt
-          sha256sum *.apk >> notes.txt
-          cat notes.txt
+          echo "build: ${{ steps.build.outcome }}" > notes.txt
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            unzip -tq AgaaChat.apk >> notes.txt 2>&1
+            ls -l *.apk | awk '{print $5, $9}' >> notes.txt
+            sha256sum *.apk >> notes.txt
+          else
+            echo "---- build log (tail) ----" >> notes.txt
+            tail -n 60 build.txt >> notes.txt
+          fi
+          echo "---- analyze (errors/warnings) ----" >> notes.txt
+          grep -E "error|warning" analyze.txt | head -60 >> notes.txt || true
+          tail -n 2 analyze.txt >> notes.txt
+          head -c 60000 notes.txt > notes2.txt
       - uses: softprops/action-gh-release@v2
+        if: always()
         with:
           tag_name: v${{ github.run_number }}
-          name: Agaa Chat v${{ github.run_number }}
-          body_path: notes.txt
+          name: Agaa Chat v${{ github.run_number }} (${{ steps.build.outcome }})
+          body_path: notes2.txt
+          prerelease: ${{ steps.build.outcome != 'success' }}
           files: |
             AgaaChat.apk
             AgaaChat_32bit.apk
